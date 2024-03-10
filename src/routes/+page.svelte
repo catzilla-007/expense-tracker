@@ -1,10 +1,14 @@
-<script>
-	let defaultDate = new Date();
+<script lang="ts">
+	let date = formatDate(new Date());
+	let price = '';
+	let description = '';
 
-	// TODO: make manifest.json for top level
+	// maybe put this in a utility file
+	function formatDate(date: Date): string {
+		const parsedDate: Array<string> = date.toLocaleDateString().split('/');
+		return `${parsedDate[2]}-${parsedDate[0].padStart(2, '0')}-${parsedDate[1].padStart(2, '0')}`;
+	}
 
-
-	console.log(defaultDate.toLocaleDateString());
 </script>
 
 <svelte:head>
@@ -13,9 +17,9 @@
 </svelte:head>
 
 <div>
-	<input type="date" value={defaultDate} placeholder="select date"/>
-	<input type="number" placeholder="set price" />
-	<input type="text" placeholder="description" />
+	<input type="date" bind:value={date} placeholder="select date"/>
+	<input type="number" bind:value={price} placeholder="0.00" min="0" step=".01" />
+	<input type="text" bind:value={description} placeholder="description" />
 
 	<button>Record</button>
 </div>
@@ -24,6 +28,7 @@
 
 	input {
 		width: 100%;
+		text-align: center;
 	}
 
 	button {
