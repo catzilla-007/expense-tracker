@@ -1,12 +1,20 @@
 <script lang="ts">
-	let date = formatDate(new Date());
-	let price = '';
-	let description = '';
+	let date: string = formatDate(new Date());
+	let price: string = '';
+	let description: string = '';
 
 	// maybe put this in a utility file
 	function formatDate(date: Date): string {
 		const parsedDate: Array<string> = date.toLocaleDateString().split('/');
 		return `${parsedDate[2]}-${parsedDate[0].padStart(2, '0')}-${parsedDate[1].padStart(2, '0')}`;
+	}
+
+	function handleRecordClick() {
+
+		console.log({ date, price, description });
+		date = formatDate(new Date());
+		price = '';
+		description = '';
 	}
 
 </script>
@@ -21,7 +29,7 @@
 	<input type="number" bind:value={price} placeholder="0.00" min="0" step=".01" />
 	<input type="text" bind:value={description} placeholder="description" />
 
-	<button>Record</button>
+	<button on:click={handleRecordClick} >Record</button>
 </div>
 
 <style>
