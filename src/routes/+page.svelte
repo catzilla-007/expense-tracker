@@ -1,4 +1,5 @@
 <script lang="ts">
+
 	let date: string = formatDate(new Date());
 	let price: string = '';
 	let description: string = '';
@@ -10,7 +11,7 @@
 	}
 
 	function handleRecordClick() {
-
+		// add the values to indexDB
 		console.log({ date, price, description });
 		date = formatDate(new Date());
 		price = '';
