@@ -28,7 +28,7 @@ export function initializeDb() {
 	};
 }
 
-export function addExpense(): void {
+export function addExpense(name: string, price: number, description: string, date: string): void {
 	const transaction: IDBTransaction = db.transaction(['expense'], 'readwrite');
 
 	transaction.oncomplete = (event: any) => {
@@ -41,7 +41,7 @@ export function addExpense(): void {
 
 	const objectStore = transaction.objectStore('expense');
 
-	const request = objectStore.add({ name: 'breakfast', price: 12, description: 'food' });
+	const request = objectStore.add({ name, price, description, date });
 
 	request.onsuccess = (event: any) => {
 		console.log('transaction ok', event);

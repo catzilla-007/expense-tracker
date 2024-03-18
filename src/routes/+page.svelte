@@ -4,6 +4,7 @@
 
 
 	let date: string = formatDate(new Date());
+	let name: string = '';
 	let price: string = '';
 	let description: string = '';
 
@@ -14,12 +15,11 @@
 	}
 
 	function handleRecordClick() {
-		// add the values to indexDB
-		console.log({ date, price, description });
-		date = formatDate(new Date());
+		const priceNum = parseFloat(price);
+		console.log({ date, priceNum, description, name });
 		price = '';
 		description = '';
-		addExpense();
+		addExpense(name, priceNum, description, date);
 	}
 
 	onMount(() => {
@@ -37,6 +37,7 @@
 <div>
 	<input type="date" bind:value={date} placeholder="select date"/>
 	<input type="number" bind:value={price} placeholder="0.00" min="0" step=".01" />
+	<input type="text" bind:value={name} placeholder="name" />
 	<input type="text" bind:value={description} placeholder="description" />
 
 	<button on:click={handleRecordClick} >Record</button>
