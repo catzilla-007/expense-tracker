@@ -1,4 +1,7 @@
 <script lang="ts">
+	import { onMount } from "svelte";
+	import { initializeDb, addExpense } from '$lib/db/indexDb';
+
 
 	let date: string = formatDate(new Date());
 	let price: string = '';
@@ -16,7 +19,13 @@
 		date = formatDate(new Date());
 		price = '';
 		description = '';
+		addExpense();
 	}
+
+	onMount(() => {
+		console.log('onmount');
+		initializeDb();
+	});
 
 </script>
 
