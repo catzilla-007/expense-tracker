@@ -19,6 +19,7 @@
 		console.log({ date, priceNum, description, name });
 		price = '';
 		description = '';
+
 		addExpense(name, priceNum, description, date);
 	}
 
@@ -34,7 +35,7 @@
 	<meta name="description" content="Track your expense" />
 </svelte:head>
 
-<div>
+<div class="main">
 	<input type="date" bind:value={date} placeholder="select date"/>
 	<input type="number" bind:value={price} placeholder="0.00" min="0" step=".01" />
 	<input type="text" bind:value={name} placeholder="name" />
@@ -45,12 +46,5 @@
 
 <style>
 
-	input {
-		width: 100%;
-		text-align: center;
-	}
-
-	button {
-		width: 100%;
-	}
+	
 </style>
