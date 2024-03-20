@@ -43,8 +43,3 @@
 
 	<button on:click={handleRecordClick} >Record</button>
 </div>
-
-<style>
-
-	
-</style>
