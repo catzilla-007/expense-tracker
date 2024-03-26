@@ -15,7 +15,6 @@ self.addEventListener('install', (event) => {
 		const cache = await caches.open(CACHE);
 		await cache.addAll(ASSETS);
 	}
-
 	event.waitUntil(addFilesToCache());
 });
 
@@ -26,13 +25,14 @@ self.addEventListener('activate', (event) => {
 			if (key !== CACHE) await caches.delete(key);
 		}
 	}
-
+	initializeDb();
 	event.waitUntil(deleteOldCaches());
 });
 
 self.addEventListener('fetch', (event) => {
-	// ignore POST requests etc
+	// only accept GET requests
 	if (event.request.method !== 'GET') return;
+
 	// ignore chrome dev tools
 	if (event.request.url.startsWith('chrome-extension')) return;
 
@@ -66,6 +66,16 @@ self.addEventListener('fetch', (event) => {
 
 			return response;
 		} catch (err) {
+			if (url.host === 'script.google.com') {
+				const name = url.searchParams.get('name');
+				const price = url.searchParams.get('price');
+				const description = url.searchParams.get('description');
+				const date = url.searchParams.get('date');
+
+				addExpense(name, price, description, date);
+				return new Response({ body: { status: 'saved' } });
+			}
+
 			const response = await cache.match(event.request);
 
 			if (response) {
@@ -80,3 +90,56 @@ self.addEventListener('fetch', (event) => {
 
 	event.respondWith(respond());
 });
+
+let db;
+
+export function getDB() {
+	if (!db) {
+		return false;
+	}
+	return db;
+}
+
+export function initializeDb() {
+	const request = indexedDB.open('expenseDB', 1);
+
+	request.onerror = (event) => {
+		console.log('cannot initializeDB');
+		console.log(event.target);
+	};
+
+	request.onsuccess = (event) => {
+		console.log('initialize db successful');
+		db = event.target.result;
+	};
+
+	request.onupgradeneeded = (event) => {
+		console.log('upgrading db');
+		db = event.target.result;
+		db.createObjectStore('expense', { autoIncrement: true });
+	};
+}
+
+export function addExpense(name, price, description, date) {
+	const transaction = db.transaction(['expense'], 'readwrite');
+
+	transaction.oncomplete = (event) => {
+		console.log('transaction complete', event);
+	};
+
+	transaction.onerror = (event) => {
+		console.log('transaction failed', event);
+	};
+
+	const objectStore = transaction.objectStore('expense');
+
+	const request = objectStore.add({ name, price, description, date });
+
+	request.onsuccess = (event) => {
+		console.log('request sucess', event);
+	};
+
+	request.onerror = (event) => {
+		console.log('request failed', event);
+	};
+}
