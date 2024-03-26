@@ -11,17 +11,25 @@
 		return `${parsedDate[2]}-${parsedDate[0].padStart(2, '0')}-${parsedDate[1].padStart(2, '0')}`;
 	}
 
+	function sanitizeDateRequest(date: string) {
+		const parsedDate: Array<string> = date.split('-');
+		return `${parsedDate[1]}/${parsedDate[2]}/${parsedDate[0]}`;
+	}
+
 	function handleRecordClick() {
 		const priceNum = parseFloat(price);
-		price = '';
-		description = '';
 
-		addExpense(name, priceNum, description, date)
+		addExpense(name, priceNum, description, sanitizeDateRequest(date))
 			.then(() => {
 				console.log('expense added');
 			})
 			.catch(() => {
 				console.log('expense add failed');
+			})
+			.finally(() => {
+				name = '';
+				price = '';
+				description = '';
 			});
 	}
 </script>
