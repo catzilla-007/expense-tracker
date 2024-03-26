@@ -5,9 +5,27 @@ Track your expenses from the comfort of your phone online or offline and automag
 This PWA is a simple app that helps you track your expenses and manage your expenditures. This app simply connects
 to your google sheet and lets you control your own categories and visual reporting
 
+# How to setup Expense Tracker
+
+### Install the app
+
+Write instructions how to install the app
+
+### Copy google sheet
+
+Write instructions how to copy google sheet
+
+### Add Appscript to google sheet
+
+Write instructions how to add app script to google sheet
+
+### Add google sheet url to the App
+
+Write instructions how to add google sheet url to app
+
 ## Developing
 
-```bash
+```sh
 npm run dev
 
 # or start the server and open the app in a new browser tab
@@ -18,14 +36,12 @@ npm run dev -- --open
 
 To create a production version:
 
-```bash
+```sh
 npm run build
 ```
 
 Preview the production build:
 
-```bash
+```sh
 npm run preview
 ```
-
-> To deploy your app, you may need to install an [adapter](https://kit.svelte.dev/docs/adapters) for your target environment.
