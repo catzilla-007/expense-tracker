@@ -28,32 +28,3 @@ body {
 		),
 		linear-gradient(180deg, var(--color-bg-0) 0%, var(--color-bg-1) 15%, var(--color-bg-2) 50%);
 }
-
-div.main {
-	display: flex;
-	flex-direction: column;
-	justify-content: center;
-	justify-items: center;
-}
-
-input {
-	height: 4rem;
-	font-size: 2rem;
-	text-align: center;
-	margin-bottom: 1rem;
-	border-radius: 1rem;
-}
-
-input[type='date'] {
-	text-align: center;
-}
-
-input[type='date']::-webkit-date-and-time-value {
-	text-align: center;
-}
-
-button {
-	height: 4rem;
-	font-size: 2rem;
-	border-radius: 1rem;
-}

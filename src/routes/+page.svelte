@@ -31,6 +31,18 @@
 				price = '';
 				description = '';
 			});
+
+		// experimental
+
+		if (!navigator.serviceWorker) return;
+
+		console.log('navigator is ok');
+		navigator.serviceWorker.ready.then((registration) => {
+			console.log('no registration active');
+			if (!registration.active) return;
+			console.log('registration active is ok');
+			registration.active.postMessage({ name: 'test' });
+		});
 	}
 </script>
 
@@ -39,11 +51,33 @@
 	<meta name="description" content="Track your expense" />
 </svelte:head>
 
-<div class="main">
-	<input type="date" bind:value={date} placeholder="select date" />
-	<input type="number" bind:value={price} placeholder="0.00" min="0" step=".01" />
-	<input type="text" bind:value={name} placeholder="name" />
-	<input type="text" bind:value={description} placeholder="description" />
+<input type="date" bind:value={date} placeholder="select date" />
+<input type="number" bind:value={price} placeholder="0.00" min="0" step=".01" />
+<input type="text" bind:value={name} placeholder="name" />
+<input type="text" bind:value={description} placeholder="description" />
 
-	<button on:click={handleRecordClick}>Record</button>
-</div>
+<button on:click={handleRecordClick}>Record</button>
+
+<style>
+	input {
+		height: 4rem;
+		font-size: 2rem;
+		text-align: center;
+		margin-bottom: 1rem;
+		border-radius: 1rem;
+	}
+
+	input[type='date'] {
+		text-align: center;
+	}
+
+	input[type='date']::-webkit-date-and-time-value {
+		text-align: center;
+	}
+
+	button {
+		height: 4rem;
+		font-size: 2rem;
+		border-radius: 1rem;
+	}
+</style>

@@ -1,16 +1,11 @@
 /// <reference types="@sveltejs/kit" />
 import { build, files, version } from '$service-worker';
 
-// Create a unique cache name for this deployment
 const CACHE = `cache-${version}`;
 
-const ASSETS = [
-	...build, // the app itself
-	...files // everything in `static`
-];
+const ASSETS = [...build, ...files];
 
 self.addEventListener('install', (event) => {
-	// Create a new cache and add all files to it
 	async function addFilesToCache() {
 		const cache = await caches.open(CACHE);
 		await cache.addAll(ASSETS);
@@ -19,7 +14,6 @@ self.addEventListener('install', (event) => {
 });
 
 self.addEventListener('activate', (event) => {
-	// Remove previous cached data from disk
 	async function deleteOldCaches() {
 		for (const key of await caches.keys()) {
 			if (key !== CACHE) await caches.delete(key);
@@ -66,6 +60,7 @@ self.addEventListener('fetch', (event) => {
 
 			return response;
 		} catch (err) {
+			// save expense details to indexDB when fetch failed
 			if (url.host === 'script.google.com') {
 				const name = url.searchParams.get('name');
 				const price = url.searchParams.get('price');
@@ -73,7 +68,7 @@ self.addEventListener('fetch', (event) => {
 				const date = url.searchParams.get('date');
 
 				addExpense(name, price, description, date);
-				return new Response({ body: { status: 'saved' } });
+				return new Response({ body: { status: 'saved to idb' } });
 			}
 
 			const response = await cache.match(event.request);
@@ -91,14 +86,11 @@ self.addEventListener('fetch', (event) => {
 	event.respondWith(respond());
 });
 
-let db;
+self.addEventListener('message', (event) => {
+	console.log(`The client sent me a message: ${event.data}`);
+});
 
-export function getDB() {
-	if (!db) {
-		return false;
-	}
-	return db;
-}
+let db;
 
 export function initializeDb() {
 	const request = indexedDB.open('expenseDB', 1);

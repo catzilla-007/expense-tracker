@@ -42,3 +42,12 @@ Preview the production build:
 ```sh
 npm run preview
 ```
+
+todo:
+
+- enable background sync
+- prettify UI layout
+- disable inputs and buttons while saving
+  - or, just use events and send to sw
+  - then sw will just handle the rest of the
+  - sending
