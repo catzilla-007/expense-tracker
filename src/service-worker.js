@@ -2,7 +2,6 @@
 import { build, files, version } from '$service-worker';
 
 const CACHE = `cache-${version}`;
-
 const ASSETS = [...build, ...files];
 
 self.addEventListener('install', (event) => {
@@ -60,25 +59,12 @@ self.addEventListener('fetch', (event) => {
 
       return response;
     } catch (err) {
-      // save expense details to indexDB when fetch failed
-      if (url.host === 'script.google.com') {
-        const name = url.searchParams.get('name');
-        const price = url.searchParams.get('price');
-        const description = url.searchParams.get('description');
-        const date = url.searchParams.get('date');
-
-        addExpense(name, price, description, date);
-        return new Response({ body: { status: 'saved to idb' } });
-      }
-
       const response = await cache.match(event.request);
 
       if (response) {
         return response;
       }
 
-      // if there's no cache, then just error out
-      // as there is nothing we can do to respond to this request
       throw err;
     }
   }
@@ -87,7 +73,18 @@ self.addEventListener('fetch', (event) => {
 });
 
 self.addEventListener('message', (event) => {
-  console.log(`The client sent me a message: ${event.data}`);
+  const { name, date, price, description } = event.data;
+
+  async function saveExpense() {
+    try {
+      await addExpenseRequest(name, price, description, date);
+    } catch (err) {
+      console.log('thing is offline, saving info to idb');
+      addExpense(name, price, description, date);
+    }
+  }
+
+  saveExpense();
 });
 
 let db;
@@ -134,4 +131,20 @@ export function addExpense(name, price, description, date) {
   request.onerror = (event) => {
     console.log('request failed', event);
   };
+}
+
+async function addExpenseRequest(name, price, description, date) {
+  const url =
+    'https://script.google.com/macros/s/AKfycbyIexJBnFFBoJD1EZHGpFS1BunDg2NZJrHDY3LovTcstwk4oahYMziwMzoO6rVf18fwsw/exec';
+
+  const params = new URLSearchParams({
+    name,
+    price: `${price}`,
+    description,
+    date
+  });
+
+  return await fetch(url + '?' + params, {
+    method: 'GET'
+  });
 }

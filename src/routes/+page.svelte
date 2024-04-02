@@ -19,21 +19,6 @@
   function handleRecordClick() {
     const priceNum = parseFloat(price);
 
-    // remove addExpense request
-
-    // addExpense(name, priceNum, description, sanitizeDateRequest(date))
-    // 	.then(() => {
-    // 		console.log('expense added');
-    // 	})
-    // 	.catch(() => {
-    // 		console.log('expense add failed');
-    // 	})
-    // 	.finally(() => {
-    // 		name = '';
-    // 		price = '';
-    // 		description = '';
-    // 	});
-
     if (!navigator.serviceWorker) return;
 
     console.log('navigator is ok');
