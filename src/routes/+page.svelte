@@ -1,46 +1,24 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { registerSync } from '$lib/api/sync';
+  import { formatDate, sanitizeDateRequest } from '$lib/date';
+  import { addExpense } from '$lib/expense';
 
   let date: string = formatDate(new Date());
   let name: string = '';
   let price: string = '';
   let description: string = '';
 
-  function formatDate(date: Date): string {
-    const parsedDate: Array<string> = date.toLocaleDateString().split('/');
-    return `${parsedDate[2]}-${parsedDate[0].padStart(2, '0')}-${parsedDate[1].padStart(2, '0')}`;
-  }
-
-  function sanitizeDateRequest(date: string) {
-    const parsedDate: Array<string> = date.split('-');
-    return `${parsedDate[1]}/${parsedDate[2]}/${parsedDate[0]}`;
-  }
-
   function handleRecordClick() {
     const priceNum = parseFloat(price);
 
-    if (!navigator.serviceWorker) return;
+    const expense = { name, price: priceNum, description, date };
 
-    navigator.serviceWorker.ready
-      .then((registration) => {
-        if (!registration.active) return;
-        const payload = {
-          name,
-          price: priceNum,
-          description,
-          date: sanitizeDateRequest(date)
-        };
-        registration.active.postMessage(payload);
-      })
-      .catch((error) => {
-        console.error('some error happened', error);
-      })
-      .finally(() => {
-        name = '';
-        price = '';
-        description = '';
-      });
+    addExpense(expense, () => {
+      name = '';
+      price = '';
+      description = '';
+    });
   }
 
   onMount(() => {
