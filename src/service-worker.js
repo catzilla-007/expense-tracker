@@ -89,9 +89,7 @@ self.addEventListener('message', (event) => {
 });
 
 self.addEventListener('sync', (event) => {
-  console.log('sw: sync', event);
   if (event.tag === 'send-expense') {
-    console.log('sw: send-expense triggered');
     event.waitUntil(sendExpenseFromDbtoSheet());
   }
 });
@@ -102,12 +100,11 @@ function initializeDb() {
   const request = indexedDB.open('expenseDB', 1);
 
   request.onerror = (event) => {
-    console.log('cannot initializeDB');
-    console.log(event.target);
+    console.error('cannot initialize db', event);
   };
 
   request.onsuccess = (event) => {
-    console.log('initialize db successful');
+    console.log('db initialized');
     db = event.target.result;
   };
 
@@ -122,11 +119,11 @@ function addExpenseToDb(name, price, description, date) {
   const transaction = db.transaction(['expense'], 'readwrite');
 
   transaction.oncomplete = (event) => {
-    console.log('transaction complete', event);
+    console.log('add expense to db complete', event);
   };
 
   transaction.onerror = (event) => {
-    console.log('transaction failed', event);
+    console.log('add expense to db failed', event);
   };
 
   const objectStore = transaction.objectStore('expense');
@@ -134,11 +131,11 @@ function addExpenseToDb(name, price, description, date) {
   const request = objectStore.add({ name, price, description, date });
 
   request.onsuccess = (event) => {
-    console.log('request sucess', event);
+    console.log('request add expense ok', event);
   };
 
   request.onerror = (event) => {
-    console.log('request failed', event);
+    console.log('request add expense failed', event);
   };
 }
 
@@ -157,26 +154,18 @@ async function addExpenseToSheet(name, price, description, date) {
 
 async function sendExpenseFromDbtoSheet() {
   const transaction = db.transaction(['expense'], 'readonly');
-  const rowsToRemove = [];
 
   transaction.oncomplete = (event) => {
-    console.log('transaction complete', event);
-    console.log('rowsToRemove', rowsToRemove);
-
-    rowsToRemove.forEach(async (id) => {
-      console.log(`removing id from idb: ${id}`);
-    });
+    console.log('send expense from db to sheet complete', event);
   };
 
   transaction.onerror = (event) => {
-    console.log('transaction failed', event);
+    console.log('send expense from db to sheet failed', event);
   };
 
   const objectStore = transaction.objectStore('expense');
 
   objectStore.getAll().onsuccess = (event) => {
-    console.log('results', event.target.result);
-
     event.target.result.forEach(async ({ id, name, price, description, date }) => {
       try {
         await addExpenseToSheet(name, price, description, date);
@@ -192,11 +181,11 @@ async function removeExpenseFromDb(id) {
   const transaction = db.transaction(['expense'], 'readwrite');
 
   transaction.oncomplete = (event) => {
-    console.log('transaction complete', event);
+    console.log(`remove expense ${id} complete`, event);
   };
 
   transaction.onerror = (event) => {
-    console.log('transaction failed', event);
+    console.log(`remove expense ${id} failed`, event);
   };
 
   transaction.objectStore('expense').delete(id);

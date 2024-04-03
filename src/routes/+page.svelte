@@ -22,7 +22,6 @@
 
     if (!navigator.serviceWorker) return;
 
-    console.log('navigator is ok');
     navigator.serviceWorker.ready
       .then((registration) => {
         if (!registration.active) return;
@@ -44,10 +43,6 @@
       });
   }
 
-  function handleTest() {
-    registerSync();
-  }
-
   onMount(() => {
     registerSync();
   });
@@ -64,8 +59,6 @@
 <input type="text" bind:value={description} placeholder="description" />
 
 <button on:click={handleRecordClick}>Record</button>
-<br />
-<button on:click={handleTest}>Test</button>
 
 <style>
   input {
