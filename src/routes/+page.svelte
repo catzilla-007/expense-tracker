@@ -1,5 +1,6 @@
 <script lang="ts">
-  import { addExpense } from '$lib/api/sheets';
+  import { onMount } from 'svelte';
+  import { registerSync } from '$lib/api/sync';
 
   let date: string = formatDate(new Date());
   let name: string = '';
@@ -24,16 +25,14 @@
     console.log('navigator is ok');
     navigator.serviceWorker.ready
       .then((registration) => {
-        console.log('no registration active');
         if (!registration.active) return;
-        console.log('registration active is ok');
-        const expense = {
+        const payload = {
           name,
           price: priceNum,
           description,
           date: sanitizeDateRequest(date)
         };
-        registration.active.postMessage(expense);
+        registration.active.postMessage(payload);
       })
       .catch((error) => {
         console.error('some error happened', error);
@@ -42,9 +41,16 @@
         name = '';
         price = '';
         description = '';
-        console.log('resetting values');
       });
   }
+
+  function handleTest() {
+    registerSync();
+  }
+
+  onMount(() => {
+    registerSync();
+  });
 </script>
 
 <svelte:head>
@@ -58,6 +64,8 @@
 <input type="text" bind:value={description} placeholder="description" />
 
 <button on:click={handleRecordClick}>Record</button>
+<br />
+<button on:click={handleTest}>Test</button>
 
 <style>
   input {

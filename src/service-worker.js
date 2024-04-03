@@ -3,6 +3,8 @@ import { build, files, version } from '$service-worker';
 
 const CACHE = `cache-${version}`;
 const ASSETS = [...build, ...files];
+const SHEET_URL =
+  'https://script.google.com/macros/s/AKfycbyIexJBnFFBoJD1EZHGpFS1BunDg2NZJrHDY3LovTcstwk4oahYMziwMzoO6rVf18fwsw/exec';
 
 self.addEventListener('install', (event) => {
   async function addFilesToCache() {
@@ -77,19 +79,26 @@ self.addEventListener('message', (event) => {
 
   async function saveExpense() {
     try {
-      await addExpenseRequest(name, price, description, date);
+      await addExpenseToSheet(name, price, description, date);
     } catch (err) {
-      console.log('thing is offline, saving info to idb');
-      addExpense(name, price, description, date);
+      addExpenseToDb(name, price, description, date);
     }
   }
 
   saveExpense();
 });
 
+self.addEventListener('sync', (event) => {
+  console.log('sw: sync', event);
+  if (event.tag === 'send-expense') {
+    console.log('sw: send-expense triggered');
+    event.waitUntil(sendExpenseFromDbtoSheet());
+  }
+});
+
 let db;
 
-export function initializeDb() {
+function initializeDb() {
   const request = indexedDB.open('expenseDB', 1);
 
   request.onerror = (event) => {
@@ -105,11 +114,11 @@ export function initializeDb() {
   request.onupgradeneeded = (event) => {
     console.log('upgrading db');
     db = event.target.result;
-    db.createObjectStore('expense', { autoIncrement: true });
+    db.createObjectStore('expense', { keyPath: 'id', autoIncrement: true });
   };
 }
 
-export function addExpense(name, price, description, date) {
+function addExpenseToDb(name, price, description, date) {
   const transaction = db.transaction(['expense'], 'readwrite');
 
   transaction.oncomplete = (event) => {
@@ -133,10 +142,7 @@ export function addExpense(name, price, description, date) {
   };
 }
 
-async function addExpenseRequest(name, price, description, date) {
-  const url =
-    'https://script.google.com/macros/s/AKfycbyIexJBnFFBoJD1EZHGpFS1BunDg2NZJrHDY3LovTcstwk4oahYMziwMzoO6rVf18fwsw/exec';
-
+async function addExpenseToSheet(name, price, description, date) {
   const params = new URLSearchParams({
     name,
     price: `${price}`,
@@ -144,7 +150,54 @@ async function addExpenseRequest(name, price, description, date) {
     date
   });
 
-  return await fetch(url + '?' + params, {
+  return await fetch(SHEET_URL + '?' + params, {
     method: 'GET'
   });
+}
+
+async function sendExpenseFromDbtoSheet() {
+  const transaction = db.transaction(['expense'], 'readonly');
+  const rowsToRemove = [];
+
+  transaction.oncomplete = (event) => {
+    console.log('transaction complete', event);
+    console.log('rowsToRemove', rowsToRemove);
+
+    rowsToRemove.forEach(async (id) => {
+      console.log(`removing id from idb: ${id}`);
+    });
+  };
+
+  transaction.onerror = (event) => {
+    console.log('transaction failed', event);
+  };
+
+  const objectStore = transaction.objectStore('expense');
+
+  objectStore.getAll().onsuccess = (event) => {
+    console.log('results', event.target.result);
+
+    event.target.result.forEach(async ({ id, name, price, description, date }) => {
+      try {
+        await addExpenseToSheet(name, price, description, date);
+        await removeExpenseFromDb(id);
+      } catch (error) {
+        console.error(error);
+      }
+    });
+  };
+}
+
+async function removeExpenseFromDb(id) {
+  const transaction = db.transaction(['expense'], 'readwrite');
+
+  transaction.oncomplete = (event) => {
+    console.log('transaction complete', event);
+  };
+
+  transaction.onerror = (event) => {
+    console.log('transaction failed', event);
+  };
+
+  transaction.objectStore('expense').delete(id);
 }
