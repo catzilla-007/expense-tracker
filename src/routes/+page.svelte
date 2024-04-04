@@ -40,11 +40,11 @@
 
 <style>
   input {
-    height: 4rem;
+    height: 3rem;
     font-size: 2rem;
     text-align: center;
     margin-bottom: 1rem;
-    border-radius: 1rem;
+    border-radius: 0.3rem;
   }
 
   input[type='date'] {
@@ -56,8 +56,8 @@
   }
 
   button {
-    height: 4rem;
+    height: 3rem;
     font-size: 2rem;
-    border-radius: 1rem;
+    border-radius: 0.3rem;
   }
 </style>
