@@ -1,8 +1,9 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { registerSync } from '$lib/api/sync';
-  import { formatDate, sanitizeDateRequest } from '$lib/date';
+  import { formatDate } from '$lib/date';
   import { addExpense } from '$lib/expense';
+  import { initializeOnlineChecker } from '$lib/online-checker';
 
   let date: string = formatDate(new Date());
   let name: string = '';
@@ -23,6 +24,7 @@
 
   onMount(() => {
     registerSync();
+    initializeOnlineChecker();
   });
 </script>
 
