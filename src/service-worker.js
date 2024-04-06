@@ -6,7 +6,20 @@ const ASSETS = [...build, ...files];
 const SHEET_URL =
   'https://script.google.com/macros/s/AKfycbyIexJBnFFBoJD1EZHGpFS1BunDg2NZJrHDY3LovTcstwk4oahYMziwMzoO6rVf18fwsw/exec';
 
-let logs = ['start-log'];
+const swLogger = new BroadcastChannel('sw-logger');
+const cacheExpense = new BroadcastChannel('cache-expense');
+const expenseCount = new BroadcastChannel('expense-count');
+
+cacheExpense.onmessage = () => {
+  debug('cache-expense triggered');
+  sendExpenseFromDbtoSheet();
+  cacheExpense.close();
+};
+
+function debug(message) {
+  console.log(`sw: ${message}`);
+  swLogger.postMessage(`sw: ${message}`);
+}
 
 self.addEventListener('install', (event) => {
   async function addFilesToCache() {
@@ -22,9 +35,8 @@ self.addEventListener('activate', (event) => {
       if (key !== CACHE) await caches.delete(key);
     }
   }
-  initializeDb();
 
-  event.waitUntil(deleteOldCaches());
+  event.waitUntil(Promise.all([deleteOldCaches(), initializeDb()]));
 });
 
 self.addEventListener('fetch', (event) => {
@@ -45,14 +57,6 @@ self.addEventListener('fetch', (event) => {
       if (response) {
         return response;
       }
-    }
-
-    if (event.request.url.startsWith('https://sw-log/get')) {
-      return new Response(JSON.stringify(logs));
-    }
-    if (event.request.url.startsWith('https://sw-log/delete')) {
-      logs = [];
-      return new Response(JSON.stringify({ status: 'ok' }));
     }
 
     // for everything else, try the network first, but
@@ -91,7 +95,9 @@ self.addEventListener('message', (event) => {
   async function saveExpense() {
     try {
       await addExpenseToSheet(name, price, description, date);
+      debug(`expense ${name}:${price} -> sheet ok`);
     } catch (err) {
+      debug(`no connection, saving ${name}:${price} to db`);
       addExpenseToDb(name, price, description, date);
     }
   }
@@ -99,65 +105,64 @@ self.addEventListener('message', (event) => {
   saveExpense();
 });
 
-self.addEventListener('sync', (event) => {
-  if (event.tag === 'send-expense') {
-    event.waitUntil(sendExpenseFromDbtoSheet());
-  }
-});
-
 let db;
 
 function initializeDb() {
-  logs.push('sw: start initialize db');
-  const request = indexedDB.open('expenseDB', 1);
+  function initialize(resolve, reject) {
+    debug('start initialize db');
+    const request = indexedDB.open('expenseDB', 1);
 
-  request.onerror = (event) => {
-    logs.push('sw: cannot initialize db');
-    logs.push(JSON.stringify(event.target));
-  };
+    request.onerror = (event) => {
+      debug('cannot initialize db');
+      debug(JSON.stringify(event.target));
+      reject();
+    };
 
-  request.onsuccess = (event) => {
-    logs.push('sw: db initialized');
-    db = event.target.result;
-  };
+    request.onsuccess = (event) => {
+      debug('db initialized');
+      db = event.target.result;
+      resolve();
+    };
 
-  request.onupgradeneeded = (event) => {
-    logs.push('sw: upgrading db');
-    db = event.target.result;
-    db.createObjectStore('expense', { keyPath: 'id', autoIncrement: true });
-  };
+    request.onupgradeneeded = (event) => {
+      debug('upgrading db');
+      db = event.target.result;
+      db.createObjectStore('expense', { keyPath: 'id', autoIncrement: true });
+    };
+  }
+
+  return new Promise(initialize);
 }
 
 function addExpenseToDb(name, price, description, date) {
   const transaction = db.transaction(['expense'], 'readwrite');
 
-  transaction.oncomplete = (event) => {
-    logs.push('sw: add expense to db ok');
-    console.log('sw: add expense to db complete', event);
+  transaction.oncomplete = () => {
+    debug('addExpenseToDb ok');
+    expenseCount.postMessage('trigger');
   };
 
   transaction.onerror = (event) => {
-    logs.push('sw: add expense to db failed');
-    logs.push(JSON.stringify(event.target));
+    debug('addExpenseToDb nok');
+    debug(JSON.stringify(event.target));
   };
 
   const objectStore = transaction.objectStore('expense');
 
   const request = objectStore.add({ name, price, description, date });
 
-  request.onsuccess = (event) => {
-    logs.push('sw: req add expense ok');
-    console.log('request add expense ok', event);
+  request.onsuccess = () => {
+    debug('add db ok');
   };
 
   request.onerror = (event) => {
-    logs.push('sw: req add expense failed');
-    logs.push(JSON.stringify(event.target));
-    console.log('request add expense failed', event);
+    debug('add db nok');
+    debug(JSON.stringify(event.target));
   };
 }
 
 async function addExpenseToSheet(name, price, description, date) {
+  debug(`trying to send ${name}:${price} to sheet`);
   const params = new URLSearchParams({
     name,
     price: `${price}`,
@@ -173,13 +178,13 @@ async function addExpenseToSheet(name, price, description, date) {
 async function sendExpenseFromDbtoSheet() {
   const transaction = db.transaction(['expense'], 'readonly');
 
-  transaction.oncomplete = (event) => {
-    console.log('send expense from db to sheet complete', event);
+  transaction.oncomplete = () => {
+    debug('sendExpenseFromDbtoSheet ok');
   };
 
   transaction.onerror = (event) => {
-    logs.push('send expense from db  to sheet failed');
-    console.log('send expense from db to sheet failed', event);
+    debug('sendExpenseFromDbtoSheet nok');
+    debug(JSON.stringify(event));
   };
 
   const objectStore = transaction.objectStore('expense');
@@ -189,6 +194,8 @@ async function sendExpenseFromDbtoSheet() {
       try {
         await addExpenseToSheet(name, price, description, date);
         await removeExpenseFromDb(id);
+        debug(`db->sheet ${name}:${price} ok`);
+        expenseCount.postMessage('trigger');
       } catch (error) {
         console.error(error);
       }
@@ -200,11 +207,11 @@ async function removeExpenseFromDb(id) {
   const transaction = db.transaction(['expense'], 'readwrite');
 
   transaction.oncomplete = (event) => {
-    console.log(`remove expense ${id} complete`, event);
+    debug(`removeExpenseFromDb ${id} ok`, event);
   };
 
   transaction.onerror = (event) => {
-    console.log(`remove expense ${id} failed`, event);
+    debug(`removeExpenseFromDb ${id} nok`, event);
   };
 
   transaction.objectStore('expense').delete(id);

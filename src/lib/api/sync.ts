@@ -1,17 +1,7 @@
-import { logger } from '$lib/store/logger';
+import { debug } from '$lib/debugger';
 
-export function registerSync(): Promise<boolean> {
-  return new Promise((resolve) => {
-    navigator.serviceWorker.ready.then((registration: any) => {
-      if (registration.sync) {
-        registration.sync.register('send-expense');
-        resolve(true);
-      } else {
-        logger.update((value) => {
-          return [...value, 'sync not available'];
-        });
-        resolve(false);
-      }
-    });
-  });
+export function initializeCacheSync() {
+  debug('trigger expense cache');
+  const bc = new BroadcastChannel('cache-expense');
+  bc.postMessage('sync');
 }
