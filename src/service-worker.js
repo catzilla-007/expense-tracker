@@ -6,6 +6,8 @@ const ASSETS = [...build, ...files];
 const SHEET_URL =
   'https://script.google.com/macros/s/AKfycbyIexJBnFFBoJD1EZHGpFS1BunDg2NZJrHDY3LovTcstwk4oahYMziwMzoO6rVf18fwsw/exec';
 
+const logs = [];
+
 self.addEventListener('install', (event) => {
   async function addFilesToCache() {
     const cache = await caches.open(CACHE);
@@ -42,6 +44,13 @@ self.addEventListener('fetch', (event) => {
       if (response) {
         return response;
       }
+    }
+
+    console.log('sw: url', event.request.url);
+
+    if (event.request.url.startsWith('http://sw-log')) {
+      console.log('entered here');
+      return new Response(JSON.stringify(logs));
     }
 
     // for everything else, try the network first, but
@@ -100,16 +109,17 @@ function initializeDb() {
   const request = indexedDB.open('expenseDB', 1);
 
   request.onerror = (event) => {
-    console.error('cannot initialize db', event);
+    logs.push('sw: cannot initialize db');
+    logs.push(JSON.stringify(event.target));
   };
 
   request.onsuccess = (event) => {
-    console.log('db initialized');
+    logs.push('sw: db initialized');
     db = event.target.result;
   };
 
   request.onupgradeneeded = (event) => {
-    console.log('upgrading db');
+    logs.push('sw: upgrading db');
     db = event.target.result;
     db.createObjectStore('expense', { keyPath: 'id', autoIncrement: true });
   };
@@ -119,11 +129,13 @@ function addExpenseToDb(name, price, description, date) {
   const transaction = db.transaction(['expense'], 'readwrite');
 
   transaction.oncomplete = (event) => {
-    console.log('add expense to db complete', event);
+    logs.push('sw: add expense to db ok');
+    console.log('sw: add expense to db complete', event);
   };
 
   transaction.onerror = (event) => {
-    console.log('add expense to db failed', event);
+    logs.push('sw: add expense to db failed');
+    logs.push(JSON.stringify(event.target));
   };
 
   const objectStore = transaction.objectStore('expense');
@@ -131,10 +143,13 @@ function addExpenseToDb(name, price, description, date) {
   const request = objectStore.add({ name, price, description, date });
 
   request.onsuccess = (event) => {
+    logs.push('sw: req add expense ok');
     console.log('request add expense ok', event);
   };
 
   request.onerror = (event) => {
+    logs.push('sw: req add expense failed');
+    logs.push(JSON.stringify(event.target));
     console.log('request add expense failed', event);
   };
 }
