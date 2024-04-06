@@ -1,10 +1,7 @@
 <script>
-  /* maybe make sure that the slots for left/center/right
-     can be used outside the header component,
-     need to use multiple <slot /> for this one
-  */
   import { isOnline } from '$lib/store/is-online';
   import OnlineIcon from './OnlineIcon.svelte';
+  import ExpenseCounter from './ExpenseCounter.svelte';
 </script>
 
 <header>
@@ -13,7 +10,7 @@
     {$isOnline ? 'Online' : 'Offline'}
   </span>
   <span class="header-center">Expense Tracker</span>
-  <span class="header-right">Expenses...</span>
+  <span class="header-right"><ExpenseCounter /></span>
 </header>
 
 <style>
@@ -41,7 +38,6 @@
 
   .header-right {
     display: flex;
-    justify-content: flex-end;
-    align-items: center;
+    align-items: flex-end;
   }
 </style>
