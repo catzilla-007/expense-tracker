@@ -1,23 +1,23 @@
 <script>
-  import { logger } from '$lib/store/logger';
+  import { logs } from '$lib/store/logs';
+  import { onMount } from 'svelte';
 
-  async function getLog() {
-    const response = await fetch('https://sw-log/get', { method: 'GET' });
-    const swLogs = await response.json();
-    logger.update((logs) => [...logs, ...swLogs]);
-  }
+  onMount(() => {
+    const bc = new BroadcastChannel('sw-logger');
 
-  function clearLog() {
-    fetch('https://sw-log/delete', { method: 'GET' });
-    logger.set([]);
-  }
+    bc.onmessage = (event) => {
+      logs.update((l) => [...l, event.data]);
+
+      return () => {
+        bc.close();
+      };
+    };
+  });
 </script>
 
 <footer>
-  <button on:click={getLog}>get Log</button>
-  <button on:click={clearLog}>Clear</button>
   <pre>
-  {#each $logger as log}
+    {#each $logs as log}
       {log}<br />
     {/each}
 </pre>
@@ -26,9 +26,13 @@
 <style>
   footer {
     text-align: left;
-    border: 1px solid yellow;
+    border-top: 1px solid yellow;
     color: #d4d1d1;
     height: 10em;
     overflow-y: scroll;
+  }
+
+  pre {
+    white-space: normal;
   }
 </style>

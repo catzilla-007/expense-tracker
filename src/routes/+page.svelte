@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { registerSync } from '$lib/api/sync';
+  import { initializeCacheSync } from '$lib/api/sync';
   import { formatDate } from '$lib/date';
   import { addExpense } from '$lib/expense';
   import { initializeOnlineChecker } from '$lib/online-checker';
@@ -23,7 +23,7 @@
   }
 
   onMount(() => {
-    registerSync();
+    initializeCacheSync();
     initializeOnlineChecker();
   });
 </script>
