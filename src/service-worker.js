@@ -6,7 +6,7 @@ const ASSETS = [...build, ...files];
 const SHEET_URL =
   'https://script.google.com/macros/s/AKfycbyIexJBnFFBoJD1EZHGpFS1BunDg2NZJrHDY3LovTcstwk4oahYMziwMzoO6rVf18fwsw/exec';
 
-let logs = [];
+let logs = ['start-log'];
 
 self.addEventListener('install', (event) => {
   async function addFilesToCache() {
@@ -23,6 +23,7 @@ self.addEventListener('activate', (event) => {
     }
   }
   initializeDb();
+
   event.waitUntil(deleteOldCaches());
 });
 
@@ -45,8 +46,6 @@ self.addEventListener('fetch', (event) => {
         return response;
       }
     }
-
-    console.log('sw: url', event.request.url);
 
     if (event.request.url.startsWith('http://sw-log/get')) {
       return new Response(JSON.stringify(logs));
@@ -109,6 +108,7 @@ self.addEventListener('sync', (event) => {
 let db;
 
 function initializeDb() {
+  logs.push('sw: start initialize db');
   const request = indexedDB.open('expenseDB', 1);
 
   request.onerror = (event) => {
