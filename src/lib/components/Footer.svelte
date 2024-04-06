@@ -2,12 +2,13 @@
   import { logger } from '$lib/store/logger';
 
   async function getLog() {
-    const response = await fetch('http://sw-log', { method: 'GET' });
+    const response = await fetch('http://sw-log/get', { method: 'GET' });
     const swLogs = await response.json();
     logger.update((logs) => [...logs, ...swLogs]);
   }
 
   function clearLog() {
+    fetch('http://sw-log/delete', { method: 'GET' });
     logger.set([]);
   }
 </script>

@@ -6,7 +6,7 @@ const ASSETS = [...build, ...files];
 const SHEET_URL =
   'https://script.google.com/macros/s/AKfycbyIexJBnFFBoJD1EZHGpFS1BunDg2NZJrHDY3LovTcstwk4oahYMziwMzoO6rVf18fwsw/exec';
 
-const logs = [];
+let logs = [];
 
 self.addEventListener('install', (event) => {
   async function addFilesToCache() {
@@ -48,9 +48,12 @@ self.addEventListener('fetch', (event) => {
 
     console.log('sw: url', event.request.url);
 
-    if (event.request.url.startsWith('http://sw-log')) {
-      console.log('entered here');
+    if (event.request.url.startsWith('http://sw-log/get')) {
       return new Response(JSON.stringify(logs));
+    }
+    if (event.request.url.startsWith('http://sw-log/delete')) {
+      logs = [];
+      return new Response(JSON.stringify({ status: 'ok' }));
     }
 
     // for everything else, try the network first, but
@@ -175,6 +178,7 @@ async function sendExpenseFromDbtoSheet() {
   };
 
   transaction.onerror = (event) => {
+    logs.push('send expense from db  to sheet failed');
     console.log('send expense from db to sheet failed', event);
   };
 
