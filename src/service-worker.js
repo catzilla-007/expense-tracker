@@ -47,10 +47,10 @@ self.addEventListener('fetch', (event) => {
       }
     }
 
-    if (event.request.url.startsWith('http://sw-log/get')) {
+    if (event.request.url.startsWith('https://sw-log/get')) {
       return new Response(JSON.stringify(logs));
     }
-    if (event.request.url.startsWith('http://sw-log/delete')) {
+    if (event.request.url.startsWith('https://sw-log/delete')) {
       logs = [];
       return new Response(JSON.stringify({ status: 'ok' }));
     }
