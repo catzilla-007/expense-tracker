@@ -10,33 +10,53 @@ const SHEET_URL =
 const DB = 'expenseDB';
 const STORE = 'expense';
 let db;
-const request = self.indexedDB.open(DB, 1);
+// const request = self.indexedDB.open(DB, 1);
 
-request.onerror = (event) => {
-  debug('cannot initialize db');
-  debug(JSON.stringify(event.target));
-};
+// request.onerror = (event) => {
+//   debug('cannot initialize db');
+//   debug(JSON.stringify(event.target));
+// };
 
-request.onsuccess = () => {
-  debug('db initialized');
-  db = request.result;
-};
+// request.onsuccess = () => {
+//   debug('db initialized');
+//   db = request.result;
+// };
 
-request.onupgradeneeded = () => {
-  debug('upgrading db');
-  db = request.result;
-  db.createObjectStore('expense', { keyPath: 'id', autoIncrement: true });
-};
+// request.onupgradeneeded = () => {
+//   debug('upgrading db');
+//   db = request.result;
+//   db.createObjectStore(STORE, { keyPath: 'id', autoIncrement: true });
+// };
 
 // broadcast channels
 const swLogger = new BroadcastChannel('sw-logger');
 const cacheExpense = new BroadcastChannel('cache-expense');
 const expenseCount = new BroadcastChannel('expense-count');
+const dbConnect = new BroadcastChannel('db-connect');
 
 cacheExpense.onmessage = () => {
   debug('cache-expense triggered');
   sendExpenseFromDbtoSheet();
   cacheExpense.close();
+};
+
+dbConnect.onmessage = () => {
+  debug('db-connect triggered');
+  if (db) {
+    debug('db already connected');
+    return;
+  }
+  const request = self.indexedDB.open(DB, 1);
+
+  request.onerror = (event) => {
+    debug('cannot initialize db');
+    debug(JSON.stringify(event.target));
+  };
+
+  request.onsuccess = () => {
+    debug('db initialized');
+    db = request.result;
+  };
 };
 
 // functions
