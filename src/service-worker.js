@@ -6,6 +6,29 @@ const ASSETS = [...build, ...files];
 const SHEET_URL =
   'https://script.google.com/macros/s/AKfycbyIexJBnFFBoJD1EZHGpFS1BunDg2NZJrHDY3LovTcstwk4oahYMziwMzoO6rVf18fwsw/exec';
 
+// indexeddb
+const DB = 'expenseDB';
+const STORE = 'expense';
+let db;
+const request = self.indexedDB.open(DB, 1);
+
+request.onerror = (event) => {
+  debug('cannot initialize db');
+  debug(JSON.stringify(event.target));
+};
+
+request.onsuccess = () => {
+  debug('db initialized');
+  db = request.result;
+};
+
+request.onupgradeneeded = () => {
+  debug('upgrading db');
+  db = request.result;
+  db.createObjectStore('expense', { keyPath: 'id', autoIncrement: true });
+};
+
+// broadcast channels
 const swLogger = new BroadcastChannel('sw-logger');
 const cacheExpense = new BroadcastChannel('cache-expense');
 const expenseCount = new BroadcastChannel('expense-count');
@@ -16,10 +39,106 @@ cacheExpense.onmessage = () => {
   cacheExpense.close();
 };
 
+// functions
+
+function addExpenseToDb(name, price, description, date) {
+  try {
+    const transaction = db.transaction([STORE], 'readwrite');
+
+    transaction.oncomplete = () => {
+      debug('addExpenseToDb ok');
+      expenseCount.postMessage('trigger');
+    };
+
+    transaction.onerror = (event) => {
+      debug('addExpenseToDb nok');
+      debug(JSON.stringify(event.target));
+    };
+
+    const objectStore = transaction.objectStore(STORE);
+
+    const request = objectStore.add({ name, price, description, date });
+
+    request.onsuccess = () => {
+      debug('add db ok');
+    };
+
+    request.onerror = (event) => {
+      debug('add db nok');
+      debug(JSON.stringify(event.target));
+    };
+  } catch (error) {
+    debug(`addExpenseToDB nok: ${error.message}`);
+  }
+}
+
+async function addExpenseToSheet(name, price, description, date) {
+  debug(`trying to send ${name}:${price} to sheet`);
+  const params = new URLSearchParams({
+    name,
+    price: `${price}`,
+    description,
+    date
+  });
+
+  return await fetch(SHEET_URL + '?' + params, {
+    method: 'GET'
+  });
+}
+
+async function sendExpenseFromDbtoSheet() {
+  try {
+    const transaction = db.transaction([STORE], 'readonly');
+
+    transaction.oncomplete = () => {
+      debug('sendExpenseFromDbtoSheet ok');
+    };
+
+    transaction.onerror = (event) => {
+      debug('sendExpenseFromDbtoSheet nok');
+      debug(JSON.stringify(event));
+    };
+
+    const objectStore = transaction.objectStore(STORE);
+
+    objectStore.getAll().onsuccess = (event) => {
+      event.target.result.forEach(async ({ id, name, price, description, date }) => {
+        try {
+          await addExpenseToSheet(name, price, description, date);
+          await removeExpenseFromDb(id);
+          debug(`db->sheet ${name}:${price} ok`);
+          expenseCount.postMessage('trigger');
+        } catch (error) {
+          debug(error.message);
+          console.error(error);
+        }
+      });
+    };
+  } catch (error) {
+    debug(`sendExpenseFromDbtoSheet nok: ${error.message}`);
+  }
+}
+
+async function removeExpenseFromDb(id) {
+  const transaction = db.transaction([STORE], 'readwrite');
+
+  transaction.oncomplete = (event) => {
+    debug(`removeExpenseFromDb ${id} ok`, event);
+  };
+
+  transaction.onerror = (event) => {
+    debug(`removeExpenseFromDb ${id} nok`, event);
+  };
+
+  transaction.objectStore('expense').delete(id);
+}
+
 function debug(message) {
   console.log(`sw: ${message}`);
   swLogger.postMessage(`sw: ${message}`);
 }
+
+// event handlers
 
 self.addEventListener('install', (event) => {
   async function addFilesToCache() {
@@ -35,8 +154,7 @@ self.addEventListener('activate', (event) => {
       if (key !== CACHE) await caches.delete(key);
     }
   }
-
-  event.waitUntil(Promise.all([deleteOldCaches(), initializeDb()]));
+  event.waitUntil(deleteOldCaches());
 });
 
 self.addEventListener('fetch', (event) => {
@@ -59,13 +177,9 @@ self.addEventListener('fetch', (event) => {
       }
     }
 
-    // for everything else, try the network first, but
-    // fall back to the cache if we're offline
     try {
       const response = await fetch(event.request);
 
-      // if we're offline, fetch can return a value that is not a Response
-      // instead of throwing - and we can't pass this non-Response to respondWith
       if (!(response instanceof Response)) {
         throw new Error('invalid response from fetch');
       }
@@ -104,115 +218,3 @@ self.addEventListener('message', (event) => {
 
   saveExpense();
 });
-
-let db;
-
-function initializeDb() {
-  function initialize(resolve, reject) {
-    debug('start initialize db');
-    const request = indexedDB.open('expenseDB', 1);
-
-    request.onerror = (event) => {
-      debug('cannot initialize db');
-      debug(JSON.stringify(event.target));
-      reject();
-    };
-
-    request.onsuccess = (event) => {
-      debug('db initialized');
-      db = event.target.result;
-      resolve();
-    };
-
-    request.onupgradeneeded = (event) => {
-      debug('upgrading db');
-      db = event.target.result;
-      db.createObjectStore('expense', { keyPath: 'id', autoIncrement: true });
-    };
-  }
-
-  return new Promise(initialize);
-}
-
-function addExpenseToDb(name, price, description, date) {
-  const transaction = db.transaction(['expense'], 'readwrite');
-
-  transaction.oncomplete = () => {
-    debug('addExpenseToDb ok');
-    expenseCount.postMessage('trigger');
-  };
-
-  transaction.onerror = (event) => {
-    debug('addExpenseToDb nok');
-    debug(JSON.stringify(event.target));
-  };
-
-  const objectStore = transaction.objectStore('expense');
-
-  const request = objectStore.add({ name, price, description, date });
-
-  request.onsuccess = () => {
-    debug('add db ok');
-  };
-
-  request.onerror = (event) => {
-    debug('add db nok');
-    debug(JSON.stringify(event.target));
-  };
-}
-
-async function addExpenseToSheet(name, price, description, date) {
-  debug(`trying to send ${name}:${price} to sheet`);
-  const params = new URLSearchParams({
-    name,
-    price: `${price}`,
-    description,
-    date
-  });
-
-  return await fetch(SHEET_URL + '?' + params, {
-    method: 'GET'
-  });
-}
-
-async function sendExpenseFromDbtoSheet() {
-  const transaction = db.transaction(['expense'], 'readonly');
-
-  transaction.oncomplete = () => {
-    debug('sendExpenseFromDbtoSheet ok');
-  };
-
-  transaction.onerror = (event) => {
-    debug('sendExpenseFromDbtoSheet nok');
-    debug(JSON.stringify(event));
-  };
-
-  const objectStore = transaction.objectStore('expense');
-
-  objectStore.getAll().onsuccess = (event) => {
-    event.target.result.forEach(async ({ id, name, price, description, date }) => {
-      try {
-        await addExpenseToSheet(name, price, description, date);
-        await removeExpenseFromDb(id);
-        debug(`db->sheet ${name}:${price} ok`);
-        expenseCount.postMessage('trigger');
-      } catch (error) {
-        console.error(error);
-      }
-    });
-  };
-}
-
-async function removeExpenseFromDb(id) {
-  const transaction = db.transaction(['expense'], 'readwrite');
-
-  transaction.oncomplete = (event) => {
-    debug(`removeExpenseFromDb ${id} ok`, event);
-  };
-
-  transaction.onerror = (event) => {
-    debug(`removeExpenseFromDb ${id} nok`, event);
-  };
-
-  transaction.objectStore('expense').delete(id);
-}
