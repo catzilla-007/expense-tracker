@@ -2,13 +2,19 @@
   import { onMount } from 'svelte';
   import { initializeCacheSync } from '$lib/api/sync';
   import { initializeOnlineChecker } from '$lib/online-checker';
-  import { initializeDb } from '$lib/api/idb';
   import ExpenseForm from '$lib/components/ExpenseForm.svelte';
 
-  onMount(async () => {
+  onMount(() => {
     initializeOnlineChecker();
-    await initializeDb();
+
+    const dbBc = new BroadcastChannel('db-connect');
+    dbBc.postMessage('trigger');
+
     setTimeout(initializeCacheSync, 2000);
+
+    return () => {
+      dbBc.close();
+    };
   });
 </script>
 

@@ -1,16 +1,16 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import NoteIcon from './NoteIcon.svelte';
-  import { getExpenseCount } from '$lib/api/idb';
+  import { debug } from '$lib/debugger';
 
   let count: number;
   onMount(async (): Promise<any> => {
-    count = await getExpenseCount();
+    count = 0;
 
     const bc = new BroadcastChannel('expense-count');
 
-    bc.onmessage = async () => {
-      count = await getExpenseCount();
+    bc.onmessage = (event) => {
+      debug(event.data);
     };
 
     return () => {

@@ -10,7 +10,8 @@ const SHEET_URL =
 const DB = 'expenseDB';
 const STORE = 'expense';
 let db;
-// const request = self.indexedDB.open(DB, 1);
+
+// const request = indexedDB.open(DB, 1);
 
 // request.onerror = (event) => {
 //   debug('cannot initialize db');
@@ -40,6 +41,10 @@ cacheExpense.onmessage = () => {
   cacheExpense.close();
 };
 
+expenseCount.onmessage = (event) => {
+  debug(event.data);
+};
+
 dbConnect.onmessage = () => {
   debug('db-connect triggered');
   if (db) {
@@ -56,6 +61,12 @@ dbConnect.onmessage = () => {
   request.onsuccess = () => {
     debug('db initialized');
     db = request.result;
+  };
+
+  request.onupgradeneeded = () => {
+    debug('upgrading db');
+    db = request.result;
+    db.createObjectStore(STORE, { keyPath: 'id', autoIncrement: true });
   };
 };
 
@@ -90,6 +101,22 @@ function addExpenseToDb(name, price, description, date) {
   } catch (error) {
     debug(`addExpenseToDB nok: ${error.message}`);
   }
+}
+
+export async function getExpenseCount() {
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction([STORE], 'readonly');
+    const objectStore = transaction.objectStore(STORE);
+
+    const countRequest = objectStore.count();
+    countRequest.onsuccess = () => {
+      resolve(countRequest.result);
+    };
+
+    countRequest.onerror = () => {
+      reject();
+    };
+  });
 }
 
 async function addExpenseToSheet(name, price, description, date) {
