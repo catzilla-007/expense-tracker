@@ -11,42 +11,31 @@ const DB = 'expenseDB';
 const STORE = 'expense';
 let db;
 
-// const request = indexedDB.open(DB, 1);
-
-// request.onerror = (event) => {
-//   debug('cannot initialize db');
-//   debug(JSON.stringify(event.target));
-// };
-
-// request.onsuccess = () => {
-//   debug('db initialized');
-//   db = request.result;
-// };
-
-// request.onupgradeneeded = () => {
-//   debug('upgrading db');
-//   db = request.result;
-//   db.createObjectStore(STORE, { keyPath: 'id', autoIncrement: true });
-// };
-
 // broadcast channels
 const swLogger = new BroadcastChannel('sw-logger');
-const cacheExpense = new BroadcastChannel('cache-expense');
+const swBroadcast = new BroadcastChannel('sw-connect');
+
 const expenseCount = new BroadcastChannel('expense-count');
-const dbConnect = new BroadcastChannel('db-connect');
 
-cacheExpense.onmessage = () => {
-  debug('cache-expense triggered');
-  sendExpenseFromDbtoSheet();
-  cacheExpense.close();
+swBroadcast.onmessage = (event) => {
+  switch (event.data) {
+    case 'db-connect':
+      connectDatabase();
+      break;
+    case 'sync-expense':
+      sendExpenseFromDbtoSheet();
+      break;
+    case 'get-expense-count':
+      getExpenseCount();
+      break;
+    default:
+      debug(`${event.data} not in broadcast`);
+      break;
+  }
 };
 
-expenseCount.onmessage = (event) => {
-  debug(event.data);
-};
-
-dbConnect.onmessage = () => {
-  debug('db-connect triggered');
+function connectDatabase() {
+  debug('connecting to db');
   if (db) {
     debug('db already connected');
     return;
@@ -68,27 +57,31 @@ dbConnect.onmessage = () => {
     db = request.result;
     db.createObjectStore(STORE, { keyPath: 'id', autoIncrement: true });
   };
-};
+}
 
 // functions
 
 function addExpenseToDb(name, price, description, date) {
   try {
-    const transaction = db.transaction([STORE], 'readwrite');
+    if (!db) {
+      debug('db not yet ready');
+      return;
+    }
+    const tx = db.transaction([STORE], 'readwrite');
 
-    transaction.oncomplete = () => {
+    tx.oncomplete = () => {
       debug('addExpenseToDb ok');
-      expenseCount.postMessage('trigger');
+      getExpenseCount();
     };
 
-    transaction.onerror = (event) => {
+    tx.onerror = (event) => {
       debug('addExpenseToDb nok');
       debug(JSON.stringify(event.target));
     };
 
-    const objectStore = transaction.objectStore(STORE);
+    const store = tx.objectStore(STORE);
 
-    const request = objectStore.add({ name, price, description, date });
+    const request = store.add({ name, price, description, date });
 
     request.onsuccess = () => {
       debug('add db ok');
@@ -104,19 +97,19 @@ function addExpenseToDb(name, price, description, date) {
 }
 
 export async function getExpenseCount() {
-  return new Promise((resolve, reject) => {
-    const transaction = db.transaction([STORE], 'readonly');
-    const objectStore = transaction.objectStore(STORE);
+  debug('getExpenseCount');
+  const transaction = db.transaction([STORE], 'readonly');
+  const objectStore = transaction.objectStore(STORE);
 
-    const countRequest = objectStore.count();
-    countRequest.onsuccess = () => {
-      resolve(countRequest.result);
-    };
+  const countRequest = objectStore.count();
+  countRequest.onsuccess = () => {
+    debug(`expense count ${countRequest.result}`);
+    expenseCount.postMessage(countRequest.result);
+  };
 
-    countRequest.onerror = () => {
-      reject();
-    };
-  });
+  countRequest.onerror = () => {
+    debug('failed to get expense count');
+  };
 }
 
 async function addExpenseToSheet(name, price, description, date) {
@@ -135,6 +128,10 @@ async function addExpenseToSheet(name, price, description, date) {
 
 async function sendExpenseFromDbtoSheet() {
   try {
+    if (!db) {
+      debug('db not yet ready');
+      return;
+    }
     const transaction = db.transaction([STORE], 'readonly');
 
     transaction.oncomplete = () => {
@@ -154,7 +151,7 @@ async function sendExpenseFromDbtoSheet() {
           await addExpenseToSheet(name, price, description, date);
           await removeExpenseFromDb(id);
           debug(`db->sheet ${name}:${price} ok`);
-          expenseCount.postMessage('trigger');
+          getExpenseCount();
         } catch (error) {
           debug(error.message);
           console.error(error);
