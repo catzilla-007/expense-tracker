@@ -3,9 +3,11 @@
 Track your expenses from the comfort of your phone online or offline and automagically list it to your own personal google sheet
 
 This PWA is a simple app that helps you track your expenses and manage your expenditures. This app simply connects
-to your google sheet and lets you control your own categories and visual reporting
+to your google sheet. Then you can do whatever you want to your google sheet. A nice perk is that you can set your sheet to private. No need to allow public access to your google sheet.
 
-# How to setup Expense Tracker
+## How to use Expense Tracker
+
+This expense tracker can be installed in your phone. You just need to follow the steps described below.
 
 ### Install the app
 
@@ -23,13 +25,17 @@ Write instructions how to add app script to google sheet
 
 Write instructions how to add google sheet url to app
 
-## Developing
+## For Developers
+
+You want to experiment and try it for yourself? Feel free to do so!
+
+### Starting the App
 
 ```sh
 npm run dev
 ```
 
-## Building
+### Building
 
 To create a production version:
 
@@ -42,12 +48,3 @@ Preview the production build:
 ```sh
 npm run preview
 ```
-
-todo:
-
-- enable background sync
-- prettify UI layout
-- disable inputs and buttons while saving
-  - or, just use events and send to sw
-  - then sw will just handle the rest of the
-  - sending
