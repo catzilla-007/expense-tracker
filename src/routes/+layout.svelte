@@ -1,15 +1,22 @@
 <script>
+  import { page } from '$app/stores';
   import './styles.css';
   import Header from '$lib/components/Header.svelte';
   import Footer from '$lib/components/Footer.svelte';
+
+  console.log($page.route.id === '/install');
 </script>
 
 <div class="app">
-  <Header />
+  {#if $page.route.id !== '/install'}
+    <Header />
+  {/if}
   <main>
     <slot />
   </main>
-  <Footer />
+  {#if $page.route.id !== '/install'}
+    <Footer />
+  {/if}
 </div>
 
 <style>
