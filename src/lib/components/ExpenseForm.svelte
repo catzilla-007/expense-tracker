@@ -39,6 +39,7 @@
     border: none;
     background-color: var(--color-bg-3);
     color: var(--color-text);
+    width: 100%;
   }
 
   ::placeholder {
@@ -49,7 +50,7 @@
     text-align: center;
   }
 
-  input[type='date']::-webkit-date-and-time-value {
+  input::-webkit-date-and-time-value {
     text-align: center;
   }
 
@@ -60,6 +61,7 @@
     background-color: var(--color-bg-2);
     color: var(--color-text-2);
     border-color: light-dark(#94edfd67, #020e0d4d);
+    width: 100%;
   }
 
   button:disabled {

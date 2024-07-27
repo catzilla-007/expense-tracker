@@ -9,6 +9,7 @@ const SHEET_URL =
 // indexeddb
 const DB = 'expenseDB';
 const STORE = 'expense';
+const SHEET_STORE = 'sheet';
 let db;
 
 // broadcast channels
@@ -56,6 +57,7 @@ function connectDatabase() {
     debug('upgrading db');
     db = request.result;
     db.createObjectStore(STORE, { keyPath: 'id', autoIncrement: true });
+    db.createObjectStore(SHEET_STORE, { key: 'id' });
   };
 }
 
