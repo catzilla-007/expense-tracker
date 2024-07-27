@@ -1,19 +1,31 @@
+/* https://coolors.co/palette/000000-0d0d0d-1a1a1a-262626-333333-404040-4d4d4d-595959-666666-737373 */
+
 :root {
   --font-body: Arial, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu,
     Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
-  --color-bg-1: #053661;
-  --color-bg-2: #052642;
-  --color-bg-3: #4075a6;
-  --color-text: #000000b3;
-  --color-text-2: #5391e0;
+
+  --color-background: #0d0d0d;
+  --color-surface: #1a1a1a;
+  --color-border: #262626;
+
+  --color-bg-1: #262626;
+  --color-bg-disabled: #161616;
+
+  --color-text-primary: #8a56cc;
+  --color-text-secondary: #efe7f8;
+  --color-text-disabled: #663f99;
+  --color-text-log: #3f3e3e;
+
   font-family: var(--font-body);
-  color: var(--color-text);
+  color: var(--color-text-primary);
+
+  font-size: 16px;
 }
 
 body {
   min-height: 100svh;
   margin: 0;
+  padding: 0;
   background-attachment: fixed;
-  background-color: var(--color-bg-1);
-  background-size: 100vw 100svh;
+  background-color: var(--color-background);
 }

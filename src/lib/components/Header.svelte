@@ -18,7 +18,7 @@
     display: flex;
     flex-direction: row;
     height: 3rem;
-    background-color: var(--color-bg-2);
+    background-color: var(--color-surface);
     color: var(--color-text-2);
     font-size: 1.1em;
   }

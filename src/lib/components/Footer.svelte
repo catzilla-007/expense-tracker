@@ -18,7 +18,7 @@
 <footer>
   <pre>
     {#each $logs as log}
-      {log}<br />
+      <div>{log}</div>
     {/each}
 </pre>
 </footer>
@@ -26,9 +26,9 @@
 <style>
   footer {
     text-align: left;
-    border-top: 1px solid yellow;
-    color: #d4d1d1;
+    color: var(--color-text-log);
     height: 10em;
+    font-size: 0.8rem;
     overflow-y: scroll;
   }
 
