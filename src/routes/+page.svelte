@@ -15,9 +15,4 @@
   });
 </script>
 
-<svelte:head>
-  <title>Expense Tracker</title>
-  <meta name="description" content="Track your expense" />
-</svelte:head>
-
 <ExpenseForm />

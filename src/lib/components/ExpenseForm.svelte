@@ -1,6 +1,7 @@
 <script lang="ts">
   import { formatDate } from '$lib/date';
   import { addExpense } from '$lib/expense';
+  import Card from './Card.svelte';
 
   let date: string = formatDate(new Date());
   let name: string = '';
@@ -22,23 +23,26 @@
   }
 </script>
 
-<input type="date" bind:value={date} placeholder="select date" />
-<input type="number" bind:value={price} placeholder="0.00" min="0" step=".01" />
-<input type="text" bind:value={name} placeholder="name" />
-<input type="text" bind:value={description} placeholder="description" />
+<Card>
+  <input type="date" bind:value={date} placeholder="select date" />
+  <input type="number" bind:value={price} placeholder="0.00" min="0" step=".01" />
+  <input type="text" bind:value={name} placeholder="name" />
+  <input type="text" bind:value={description} placeholder="description" />
 
-<button on:click={handleRecordClick} {disabled}>Record</button>
+  <button on:click={handleRecordClick} {disabled}>Record</button>
+</Card>
 
 <style>
   input {
     height: 3rem;
-    font-size: 2rem;
+    font-size: 1.5rem;
     text-align: center;
     margin-bottom: 1rem;
     border-radius: 0.3rem;
     border: none;
-    background-color: var(--color-bg-3);
+    background-color: var(--color-bg-1);
     color: var(--color-text);
+    width: 100%;
   }
 
   ::placeholder {
@@ -49,25 +53,22 @@
     text-align: center;
   }
 
-  input[type='date']::-webkit-date-and-time-value {
+  input::-webkit-date-and-time-value {
     text-align: center;
   }
 
   button {
+    margin-top: 3rem;
     height: 3rem;
-    font-size: 2rem;
-    border-radius: 0.3rem;
-    background-color: var(--color-bg-2);
-    color: var(--color-text-2);
-    border-color: light-dark(#94edfd67, #020e0d4d);
+    font-size: 1.4rem;
+    border-radius: 2rem;
+    color: var(--color-text-primary);
+    background-color: var(--color-bg-1);
+    width: 100%;
   }
 
   button:disabled {
-    background-color: var(--color-bg-3);
-    border-color: light-dark(#94edfd67, #020e0d4d);
-  }
-
-  button:active {
-    background-color: #041b30;
+    background-color: var(--color-bg-disabled);
+    color: var(--color-text-disabled);
   }
 </style>
