@@ -1,16 +1,17 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { requestSyncExpense, initializeDbConnect, swBroadcast } from '$lib/api/broadcast';
-  import { initializeOnlineChecker } from '$lib/online-checker';
-  import ExpenseForm from '$lib/components/ExpenseForm.svelte';
+  import { requestSyncExpense, initializeDbConnect } from '#lib/api/broadcast.ts';
+  import { initializeOnlineChecker } from '#lib/online-checker.ts';
+  import ExpenseForm from '#lib/components/ExpenseForm.svelte';
 
   onMount(() => {
-    initializeOnlineChecker();
+    const stopOnlineChecker = initializeOnlineChecker();
     initializeDbConnect();
-    setTimeout(requestSyncExpense, 3000);
+    const syncTimeout = setTimeout(requestSyncExpense, 3000);
 
     return () => {
-      swBroadcast.close();
+      clearTimeout(syncTimeout);
+      stopOnlineChecker();
     };
   });
 </script>

@@ -1,23 +1,23 @@
 <script lang="ts">
-  import { formatDate } from '$lib/date';
-  import { addExpense } from '$lib/expense';
+  import { formatDate } from '#lib/date.ts';
+  import { addExpense } from '#lib/expense.ts';
   import Card from './Card.svelte';
 
-  let date: string = formatDate(new Date());
-  let name: string = '';
-  let price: string = '';
-  let description: string = '';
+  let date = $state(formatDate(new Date()));
+  let name = $state('');
+  let price = $state<number | null>(null);
+  let description = $state('');
 
-  $: disabled = name.length === 0 || price.length === 0;
+  const disabled = $derived(name.length === 0 || price === null);
 
   function handleRecordClick() {
-    const priceNum = parseFloat(price);
+    if (price === null) return;
 
-    const expense = { name, price: priceNum, description, date };
+    const expense = { name, price, description, date };
 
     addExpense(expense, () => {
       name = '';
-      price = '';
+      price = null;
       description = '';
     });
   }
@@ -29,7 +29,7 @@
   <input type="text" bind:value={name} placeholder="name" />
   <input type="text" bind:value={description} placeholder="description" />
 
-  <button on:click={handleRecordClick} {disabled}>Record</button>
+  <button onclick={handleRecordClick} {disabled}>Record</button>
 </Card>
 
 <style>
@@ -55,6 +55,14 @@
 
   input::-webkit-date-and-time-value {
     text-align: center;
+  }
+
+  input::-webkit-inner-spin-button {
+    color: red;
+  }
+
+  input::-webkit-calendar-picker-indicator {
+    display: none;
   }
 
   button {

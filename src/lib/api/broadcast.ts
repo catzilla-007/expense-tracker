@@ -1,4 +1,4 @@
-import { debug } from '$lib/debugger';
+import { debug } from '#lib/debugger.ts';
 
 export const swBroadcast = new BroadcastChannel('sw-connect');
 

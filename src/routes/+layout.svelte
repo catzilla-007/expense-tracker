@@ -1,19 +1,22 @@
-<script>
+<script lang="ts">
   import './styles.css';
 
-  import { page } from '$app/stores';
-  import Header from '$lib/components/Header.svelte';
-  import Footer from '$lib/components/Footer.svelte';
+  import { page } from '$app/state';
+  import type { Snippet } from 'svelte';
+  import Header from '#lib/components/Header.svelte';
+  import Footer from '#lib/components/Footer.svelte';
+
+  let { children }: { children: Snippet } = $props();
 </script>
 
 <div class="app">
-  {#if $page.route.id !== '/install'}
+  {#if page.route.id !== '/install'}
     <Header />
   {/if}
   <main>
-    <slot />
+    {@render children()}
   </main>
-  {#if $page.route.id !== '/install'}
+  {#if page.route.id !== '/install'}
     <Footer />
   {/if}
 </div>
