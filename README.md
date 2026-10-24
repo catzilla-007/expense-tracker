@@ -13,17 +13,60 @@ This expense tracker can be installed in your phone. You just need to follow the
 
 Write instructions how to install the app
 
-### Copy google sheet
+### Connect your Google Sheet
 
-Write instructions how to copy google sheet
+1. Open your spreadsheet and choose **Extensions → Apps Script**. Your script must
+   implement `doGet(e)` and append `e.parameter.name`, `e.parameter.price`,
+   `e.parameter.description`, and `e.parameter.date` to the intended sheet.
+   The script source is not included in this repository.
+2. Deploy the script as a **Web app**, with **Execute as: Me** and
+   **Who has access: Anyone** so this app can call it without an interactive Google sign-in. See
+   [Google's web app deployment guide](https://developers.google.com/apps-script/guides/web).
+3. Copy the deployed URL in the form
+   `https://script.google.com/macros/s/<deployment-id>/exec` (not a `/dev` URL or spreadsheet link).
+4. Open the **Settings** gear in Expense Tracker, paste the URL, and select **Save**.
+   Saving validates the URL format; verify actual delivery using a test spreadsheet.
 
-### Add Appscript to google sheet
+The connection is stored in IndexedDB in this browser/device, alongside queued
+expenses. Configure each device separately. Clearing browser site data removes both.
+There is no default connection, including after upgrading from the hard-coded version.
 
-Write instructions how to add app script to google sheet
+You can record expenses before setup or while offline. They remain on the device
+and sync after setup, on app startup, or when connectivity returns. Use **Sync now**
+in Settings to retry manually. Existing queued expenses are preserved during upgrades
+and go to the first connection you configure.
 
-### Add google sheet url to the App
+To replace or clear a connection, first sync all pending expenses. Changing it is
+blocked while expenses remain queued or synchronization is in progress. Clearing a
+connection leaves recording available; new expenses queue until setup is complete.
 
-Write instructions how to add google sheet url to app
+Uploads retain the existing GET parameter contract. HTTP failures retain expenses
+for retry. Because the external script's response contract is unspecified, an HTTP
+200 application error cannot reliably be detected, and ambiguous network failures
+can cause duplicates on retry. Integration responses are not cached by the PWA.
+
+### Troubleshoot CORS errors
+
+A `No 'Access-Control-Allow-Origin' header` error can mean Apps Script returned a
+sign-in, permissions, or script error page instead of its normal response. The app
+already sends a simple GET request and follows redirects.
+
+- Check **Deploy → Manage deployments**: the web app must run as **Me** and allow
+  **Anyone**, including visitors who are not signed in. If your organization does
+  not allow anonymous web apps, this direct browser integration needs a different
+  deployment/account or an authenticated backend.
+- Make sure `doGet(e)` returns a Content Service response after appending the row,
+  for example `return ContentService.createTextOutput('OK');`. Content Service
+  redirects to `script.googleusercontent.com`; the browser follows this automatically.
+- After editing the script, update the deployment to a **New version** and check
+  that Settings contains its `/exec` URL.
+- Inspect **Executions** in Apps Script for failures. Use a test spreadsheet to
+  verify delivery; opening the expense URL directly can append another row.
+
+Do not switch the request to `mode: 'no-cors'`: its opaque response would prevent
+the app from checking HTTP success before removing a locally saved expense.
+Failed requests remain queued. Check the sheet before retrying because a blocked
+response can occur after the script has already appended the row.
 
 ## For Developers
 

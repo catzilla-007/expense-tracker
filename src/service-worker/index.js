@@ -1,192 +1,179 @@
 import { version } from '$app/env';
 import { assets, immutable, prerendered } from '$app/manifest';
+import { normalizeSheetUrl } from '../lib/sheet-url.js';
 
 const CACHE = `cache-${version}`;
 const ASSETS = [...immutable, ...assets, ...prerendered].map(
   ({ path }) => new URL(path, self.registration.scope).pathname
 );
-const SHEET_URL =
-  'https://script.google.com/macros/s/AKfycbyIexJBnFFBoJD1EZHGpFS1BunDg2NZJrHDY3LovTcstwk4oahYMziwMzoO6rVf18fwsw/exec';
-
-// indexeddb
-const DB = 'expenseDB';
 const STORE = 'expense';
 const SHEET_STORE = 'sheet';
-let db;
-
-// broadcast channels
-const swLogger = new BroadcastChannel('sw-logger');
-const swBroadcast = new BroadcastChannel('sw-connect');
-
+const CONFIG_KEY = 'apps-script-url';
 const expenseCount = new BroadcastChannel('expense-count');
-
-swBroadcast.onmessage = (event) => {
-  switch (event.data) {
-    case 'db-connect':
-      connectDatabase();
-      break;
-    case 'sync-expense':
-      sendExpenseFromDbtoSheet();
-      break;
-    case 'get-expense-count':
-      getExpenseCount();
-      break;
-    default:
-      debug(`${event.data} not in broadcast`);
-      break;
-  }
-};
+const settingsChannel = new BroadcastChannel('sheet-settings');
+let database;
+let operations = Promise.resolve();
+let syncing = false;
+let syncAgain = false;
+let syncError = '';
 
 function connectDatabase() {
-  debug('connecting to db');
-  if (db) {
-    debug('db already connected');
+  if (!database) {
+    database = new Promise((resolve, reject) => {
+      const request = indexedDB.open('expenseDB', 1);
+      request.onupgradeneeded = () => {
+        request.result.createObjectStore(STORE, { keyPath: 'id', autoIncrement: true });
+        request.result.createObjectStore(SHEET_STORE);
+      };
+      request.onsuccess = () => {
+        request.result.onversionchange = () => {
+          request.result.close();
+          database = undefined;
+        };
+        resolve(request.result);
+      };
+      request.onerror = () => {
+        database = undefined;
+        reject(request.error);
+      };
+    });
+  }
+  return database;
+}
+
+async function accessStore(store, mode, action) {
+  const db = await connectDatabase();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(store, mode);
+    const request = action(tx.objectStore(store));
+    tx.oncomplete = () => resolve(request.result);
+    tx.onerror = tx.onabort = () => reject(tx.error || new Error('Local storage failed.'));
+  });
+}
+
+function serialize(action) {
+  const result = operations.then(action);
+  operations = result.catch(() => {});
+  return result;
+}
+
+async function getSettings() {
+  const url = (await accessStore(SHEET_STORE, 'readonly', (store) => store.get(CONFIG_KEY))) || '';
+  const count = await accessStore(STORE, 'readonly', (store) => store.count());
+  return { url, count, syncing, error: syncError };
+}
+
+async function publish() {
+  const state = await getSettings();
+  expenseCount.postMessage(state.count);
+  settingsChannel.postMessage(state);
+  return state;
+}
+
+async function saveSettings(value) {
+  const url = normalizeSheetUrl(value);
+  return serialize(async () => {
+    const current = await getSettings();
+    if (url !== current.url && (syncing || (current.url && current.count > 0))) {
+      throw new Error('Sync pending expenses before changing or clearing the connection.');
+    }
+    await accessStore(SHEET_STORE, 'readwrite', (store) => store.put(url, CONFIG_KEY));
+    syncError = '';
+    return publish();
+  });
+}
+
+async function syncExpenses() {
+  if (syncing) {
+    syncAgain = true;
     return;
   }
-  const request = self.indexedDB.open(DB, 1);
-
-  request.onerror = (event) => {
-    debug('cannot initialize db');
-    debug(JSON.stringify(event.target));
-  };
-
-  request.onsuccess = () => {
-    debug('db initialized');
-    db = request.result;
-  };
-
-  request.onupgradeneeded = () => {
-    debug('upgrading db');
-    db = request.result;
-    db.createObjectStore(STORE, { keyPath: 'id', autoIncrement: true });
-    db.createObjectStore(SHEET_STORE, { key: 'id' });
-  };
-}
-
-// functions
-
-function addExpenseToDb(name, price, description, date) {
+  syncing = true;
+  syncAgain = false;
+  syncError = '';
   try {
-    if (!db) {
-      debug('db not yet ready');
-      return;
+    await publish();
+    const { url } = await serialize(getSettings);
+    if (!url) return;
+    // Recording remains available while network requests are in flight.
+    while (true) {
+      const records = await accessStore(STORE, 'readonly', (store) => store.getAll());
+      if (!records.length) break;
+      for (const { id, name, price, description, date } of records) {
+        const params = new URLSearchParams({
+          name,
+          price: `${price}`,
+          description: description || '',
+          date
+        });
+        const response = await fetch(`${url}?${params}`, {
+          method: 'GET',
+          cache: 'no-store',
+          signal: AbortSignal.timeout(15000)
+        });
+        if (!response.ok) throw new Error(`Google Sheets returned HTTP ${response.status}.`);
+        await accessStore(STORE, 'readwrite', (store) => store.delete(id));
+        await publish();
+      }
     }
-    const tx = db.transaction([STORE], 'readwrite');
-
-    tx.oncomplete = () => {
-      debug('addExpenseToDb ok');
-      getExpenseCount();
-    };
-
-    tx.onerror = (event) => {
-      debug('addExpenseToDb nok');
-      debug(JSON.stringify(event.target));
-    };
-
-    const store = tx.objectStore(STORE);
-
-    const request = store.add({ name, price, description, date });
-
-    request.onsuccess = () => {
-      debug('add db ok');
-    };
-
-    request.onerror = (event) => {
-      debug('add db nok');
-      debug(JSON.stringify(event.target));
-    };
   } catch (error) {
-    debug(`addExpenseToDB nok: ${error.message}`);
+    const detail =
+      error instanceof TypeError
+        ? 'The request could not be completed. Check your connection and deploy Apps Script as a web app running as you with access set to Anyone. Return a ContentService response and use the updated /exec URL.'
+        : error.message;
+    syncError = `Sync failed. Expenses remain on this device. ${detail}`;
+  } finally {
+    syncing = false;
+    const state = await publish();
+    if (syncAgain && !syncError && state.url) await syncExpenses();
   }
 }
 
-export async function getExpenseCount() {
-  debug('getExpenseCount');
-  const transaction = db.transaction([STORE], 'readonly');
-  const objectStore = transaction.objectStore(STORE);
-
-  const countRequest = objectStore.count();
-  countRequest.onsuccess = () => {
-    debug(`expense count ${countRequest.result}`);
-    expenseCount.postMessage(countRequest.result);
-  };
-
-  countRequest.onerror = () => {
-    debug('failed to get expense count');
-  };
-}
-
-async function addExpenseToSheet(name, price, description, date) {
-  debug(`trying to send ${name}:${price} to sheet`);
-  const params = new URLSearchParams({
-    name,
-    price: `${price}`,
-    description,
-    date
-  });
-
-  return await fetch(SHEET_URL + '?' + params, {
-    method: 'GET'
-  });
-}
-
-async function sendExpenseFromDbtoSheet() {
-  try {
-    if (!db) {
-      debug('db not yet ready');
-      return;
+self.addEventListener('message', (event) => {
+  const port = event.ports[0];
+  async function handle() {
+    try {
+      let result;
+      let shouldSync = false;
+      switch (event.data.type) {
+        case 'get-settings':
+        case 'get-expense-count':
+          result = await serialize(publish);
+          break;
+        case 'save-settings':
+          result = await saveSettings(event.data.url);
+          shouldSync = Boolean(result.url);
+          break;
+        case 'sync-expense':
+          await syncExpenses();
+          result = await getSettings();
+          break;
+        case 'add-expense':
+        case undefined: // Accept messages from an older open app during an update.
+          result = await serialize(async () => {
+            const expense = event.data.expense || event.data;
+            const { name, price, description, date } = expense;
+            if (!name || !Number.isFinite(price) || !date) throw new Error('Invalid expense.');
+            await accessStore(STORE, 'readwrite', (store) =>
+              store.add({ name, price, description, date })
+            );
+            return publish();
+          });
+          shouldSync = true;
+          break;
+        default:
+          throw new Error('Unknown service worker request.');
+      }
+      port?.postMessage({ ok: true, result });
+      if (shouldSync) await syncExpenses();
+    } catch (error) {
+      port?.postMessage({ ok: false, error: error.message });
+    } finally {
+      port?.close();
     }
-    const transaction = db.transaction([STORE], 'readonly');
-
-    transaction.oncomplete = () => {
-      debug('sendExpenseFromDbtoSheet ok');
-    };
-
-    transaction.onerror = (event) => {
-      debug('sendExpenseFromDbtoSheet nok');
-      debug(JSON.stringify(event));
-    };
-
-    const objectStore = transaction.objectStore(STORE);
-
-    objectStore.getAll().onsuccess = (event) => {
-      event.target.result.forEach(async ({ id, name, price, description, date }) => {
-        try {
-          await addExpenseToSheet(name, price, description, date);
-          await removeExpenseFromDb(id);
-          debug(`db->sheet ${name}:${price} ok`);
-          getExpenseCount();
-        } catch (error) {
-          debug(error.message);
-          console.error(error);
-        }
-      });
-    };
-  } catch (error) {
-    debug(`sendExpenseFromDbtoSheet nok: ${error.message}`);
   }
-}
-
-async function removeExpenseFromDb(id) {
-  const transaction = db.transaction([STORE], 'readwrite');
-
-  transaction.oncomplete = (event) => {
-    debug(`removeExpenseFromDb ${id} ok`, event);
-  };
-
-  transaction.onerror = (event) => {
-    debug(`removeExpenseFromDb ${id} nok`, event);
-  };
-
-  transaction.objectStore('expense').delete(id);
-}
-
-function debug(message) {
-  console.log(`sw: ${message}`);
-  swLogger.postMessage(`sw: ${message}`);
-}
-
-// event handlers
+  event.waitUntil(handle());
+});
 
 self.addEventListener('install', (event) => {
   async function addFilesToCache() {
@@ -208,6 +195,7 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   // only accept GET requests
   if (event.request.method !== 'GET') return;
+  if (new URL(event.request.url).origin !== self.location.origin) return;
 
   // ignore chrome dev tools
   if (event.request.url.startsWith('chrome-extension')) return;
@@ -233,7 +221,7 @@ self.addEventListener('fetch', (event) => {
       }
 
       if (response.status === 200) {
-        cache.put(event.request, response.clone());
+        await cache.put(event.request, response.clone());
       }
 
       return response;
@@ -249,20 +237,4 @@ self.addEventListener('fetch', (event) => {
   }
 
   event.respondWith(respond());
-});
-
-self.addEventListener('message', (event) => {
-  const { name, date, price, description } = event.data;
-
-  async function saveExpense() {
-    try {
-      await addExpenseToSheet(name, price, description, date);
-      debug(`expense ${name}:${price} -> sheet ok`);
-    } catch {
-      debug(`no connection, saving ${name}:${price} to db`);
-      addExpenseToDb(name, price, description, date);
-    }
-  }
-
-  saveExpense();
 });
