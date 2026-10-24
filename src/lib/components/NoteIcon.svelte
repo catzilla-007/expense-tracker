@@ -1,6 +1,6 @@
 <script lang="ts">
-  import noteIcon from '$lib/images/notes.svg';
-  export let count: number = 0;
+  import noteIcon from '#lib/images/notes.svg';
+  let { count = 0 }: { count?: number } = $props();
 </script>
 
 <span>

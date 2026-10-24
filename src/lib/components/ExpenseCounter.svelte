@@ -1,11 +1,11 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import NoteIcon from './NoteIcon.svelte';
-  import { debug } from '$lib/debugger';
-  import { requestExpenseCount } from '$lib/api/broadcast';
+  import { debug } from '#lib/debugger.ts';
+  import { requestExpenseCount } from '#lib/api/broadcast.ts';
 
-  let count: number;
-  onMount((): any => {
+  let count = $state(0);
+  onMount(() => {
     const bc = new BroadcastChannel('expense-count');
     requestExpenseCount();
 

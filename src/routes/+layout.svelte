@@ -1,21 +1,20 @@
-<script>
+<script lang="ts">
   import './styles.css';
 
-  import { page } from '$app/stores';
-  import Header from '$lib/components/Header.svelte';
-  import Footer from '$lib/components/Footer.svelte';
+  import { page } from '$app/state';
+  import type { Snippet } from 'svelte';
+  import Header from '#lib/components/Header.svelte';
+
+  let { children }: { children: Snippet } = $props();
 </script>
 
 <div class="app">
-  {#if $page.route.id !== '/install'}
+  {#if page.route.id !== '/install'}
     <Header />
   {/if}
   <main>
-    <slot />
+    {@render children()}
   </main>
-  {#if $page.route.id !== '/install'}
-    <Footer />
-  {/if}
 </div>
 
 <style>
@@ -29,7 +28,8 @@
     display: flex;
     flex-grow: 1;
     flex-direction: column;
-    padding: 1em;
+    padding: 1rem 1rem calc(1.5rem + env(safe-area-inset-bottom));
+    max-width: 36rem;
     width: 100%;
     margin: 0 auto;
     box-sizing: border-box;

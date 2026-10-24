@@ -1,5 +1,5 @@
 <script>
-  import { logs } from '$lib/store/logs';
+  import { logs } from '#lib/store/logs.ts';
   import { onMount } from 'svelte';
 
   onMount(() => {
@@ -7,17 +7,17 @@
 
     bc.onmessage = (event) => {
       logs.update((l) => [...l, event.data]);
+    };
 
-      return () => {
-        bc.close();
-      };
+    return () => {
+      bc.close();
     };
   });
 </script>
 
 <footer>
   <pre>
-    {#each $logs as log}
+    {#each $logs as log, index (index)}
       <div>{log}</div>
     {/each}
 </pre>
