@@ -1,6 +1,6 @@
 <h4>install page</h4>
 
-<textarea rows="5" />
+<textarea rows="5"></textarea>
 <button>Install</button>
 
 <style>

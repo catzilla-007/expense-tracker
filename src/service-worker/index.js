@@ -1,8 +1,10 @@
-/// <reference types="@sveltejs/kit" />
-import { build, files, version } from '$service-worker';
+import { version } from '$app/env';
+import { assets, immutable, prerendered } from '$app/manifest';
 
 const CACHE = `cache-${version}`;
-const ASSETS = [...build, ...files];
+const ASSETS = [...immutable, ...assets, ...prerendered].map(
+  ({ path }) => new URL(path, self.registration.scope).pathname
+);
 const SHEET_URL =
   'https://script.google.com/macros/s/AKfycbyIexJBnFFBoJD1EZHGpFS1BunDg2NZJrHDY3LovTcstwk4oahYMziwMzoO6rVf18fwsw/exec';
 
@@ -214,7 +216,7 @@ self.addEventListener('fetch', (event) => {
     const url = new URL(event.request.url);
     const cache = await caches.open(CACHE);
 
-    // `build`/`files` can always be served from the cache
+    // Build assets and prerendered routes can be served from the cache
     if (ASSETS.includes(url.pathname)) {
       const response = await cache.match(url.pathname);
 
@@ -256,7 +258,7 @@ self.addEventListener('message', (event) => {
     try {
       await addExpenseToSheet(name, price, description, date);
       debug(`expense ${name}:${price} -> sheet ok`);
-    } catch (err) {
+    } catch {
       debug(`no connection, saving ${name}:${price} to db`);
       addExpenseToDb(name, price, description, date);
     }

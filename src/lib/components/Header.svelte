@@ -1,5 +1,5 @@
 <script>
-  import { isOnline } from '$lib/store/is-online';
+  import { isOnline } from '#lib/store/is-online.ts';
   import OnlineIcon from './OnlineIcon.svelte';
   import ExpenseCounter from './ExpenseCounter.svelte';
 </script>

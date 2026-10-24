@@ -1,8 +1,8 @@
 <script lang="ts">
-  export let online: boolean;
+  let { online }: { online: boolean } = $props();
 </script>
 
-<span class="dot {online ? 'green-dot' : 'red-dot'}" />
+<span class="dot {online ? 'green-dot' : 'red-dot'}"></span>
 
 <style>
   .dot {

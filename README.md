@@ -29,6 +29,16 @@ Write instructions how to add google sheet url to app
 
 You want to experiment and try it for yourself? Feel free to do so!
 
+### Prerequisites
+
+Use Node.js 24 LTS and npm. With nvm installed:
+
+```sh
+nvm install
+nvm use
+npm ci
+```
+
 ### Starting the App
 
 ```sh
@@ -48,3 +58,14 @@ Preview the production build:
 ```sh
 npm run preview
 ```
+
+### Validation
+
+```sh
+npm run check
+npm run lint
+npm run build
+```
+
+Run `npm run format` to apply Prettier formatting. The app uses Svelte 5,
+SvelteKit 3, and the static adapter; build output is written to `build/`.
